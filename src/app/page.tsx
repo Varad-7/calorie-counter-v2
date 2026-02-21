@@ -5,6 +5,7 @@ import { DailyLogger } from "@/components/DailyLogger";
 import { ProgressVisualizer } from "@/components/ProgressVisualizer";
 import { DateNavigator } from "@/components/DateNavigator";
 import { AddProfileModal } from "@/components/AddProfileModal";
+import { EditProfileModal } from "@/components/EditProfileModal"; // Added this import
 import { useStore } from "@/store/useStore";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -43,6 +44,7 @@ export default function Home() {
         <section>
           <ProfileSwitcher />
           <AddProfileModal />
+          <EditProfileModal />
         </section>
 
         {profiles.length === 0 ? (

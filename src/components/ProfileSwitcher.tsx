@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from "@/store/useStore";
-import { User, PlusCircle, Trash2 } from "lucide-react";
+import { User, PlusCircle, Trash2, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -33,7 +33,7 @@ export function ProfileSwitcher() {
     };
 
     return (
-        <div className="w-full max-w-sm mx-auto">
+        <div className="w-full max-w-sm mx-auto flex items-center gap-2">
             <Select value={activeValue} onValueChange={handleValueChange}>
                 <SelectTrigger className="w-full bg-muted/20 border-muted">
                     <SelectValue placeholder="Select a profile" />
@@ -79,6 +79,18 @@ export function ProfileSwitcher() {
                     </SelectGroup>
                 </SelectContent>
             </Select>
+
+            {activeProfileId && (
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 bg-muted/20 border-muted hover:bg-muted/50"
+                    title="Edit Active Profile"
+                    onClick={() => document.getElementById('edit-profile-trigger')?.click()}
+                >
+                    <Pencil className="w-4 h-4 text-muted-foreground" />
+                </Button>
+            )}
         </div>
     );
 }
