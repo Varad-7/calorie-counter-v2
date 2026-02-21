@@ -118,7 +118,7 @@ export function DailyLogger() {
             <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                     {slots.map((slot) => {
-                        const slotItems = currentLog.items?.[slot.key as keyof Omit<DayLog, 'items'>] || [];
+                        const slotItems = currentLog.items?.[slot.key as keyof Omit<DayLog, 'items' | 'gym'>] || [];
                         return (
                             <div key={slot.key} className="space-y-2 bg-muted/30 p-4 rounded-xl border">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
