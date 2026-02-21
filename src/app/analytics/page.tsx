@@ -161,23 +161,24 @@ export default function AnalyticsPage() {
                                     <ComposedChart data={calorieData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} fontSize={12} />
-                                        <YAxis axisLine={false} tickLine={false} tickMargin={10} fontSize={12} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.2)" />
+                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} fontSize={12} stroke="#888" />
+                                        <YAxis axisLine={false} tickLine={false} tickMargin={10} fontSize={12} stroke="#888" />
                                         <Tooltip
-                                            contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--background))' }}
-                                            itemStyle={{ color: 'hsl(var(--foreground))' }}
+                                            contentStyle={{ borderRadius: '8px', border: '1px solid rgba(128,128,128,0.3)', backgroundColor: 'rgba(20,20,20,0.95)', color: '#fff' }}
+                                            itemStyle={{ color: '#e5e5e5' }}
+                                            labelStyle={{ color: '#a3a3a3' }}
                                         />
                                         <Legend iconType="circle" />
                                         <Area
                                             type="monotone"
                                             dataKey="net"
                                             name="Net Calories"
-                                            stroke="hsl(var(--primary))"
+                                            stroke="#6366f1"
                                             strokeWidth={3}
                                             fillOpacity={1}
                                             fill="url(#colorNet)"
@@ -186,7 +187,7 @@ export default function AnalyticsPage() {
                                             type="monotone"
                                             dataKey="target"
                                             name="Target Goal"
-                                            stroke="hsl(var(--destructive))"
+                                            stroke="#ef4444"
                                             strokeWidth={2}
                                             strokeDasharray="5 5"
                                             dot={false}
@@ -206,17 +207,17 @@ export default function AnalyticsPage() {
                             <div className="h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={calorieData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} fontSize={12} />
-                                        <YAxis axisLine={false} tickLine={false} tickMargin={10} fontSize={12} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.2)" />
+                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} fontSize={12} stroke="#888" />
+                                        <YAxis axisLine={false} tickLine={false} tickMargin={10} fontSize={12} stroke="#888" />
                                         <Tooltip
-                                            cursor={{ fill: 'rgba(128,128,128,0.15)' }}
-                                            contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                            itemStyle={{ color: 'hsl(var(--foreground))' }}
-                                            labelStyle={{ color: 'hsl(var(--foreground))' }}
+                                            cursor={{ fill: 'rgba(128,128,128,0.1)' }}
+                                            contentStyle={{ borderRadius: '8px', border: '1px solid rgba(128,128,128,0.3)', backgroundColor: 'rgba(20,20,20,0.95)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                                            itemStyle={{ color: '#e5e5e5' }}
+                                            labelStyle={{ color: '#a3a3a3' }}
                                         />
                                         <Legend iconType="circle" />
-                                        <Bar dataKey="consumed" name="Consumed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="consumed" name="Consumed" fill="#6366f1" radius={[4, 4, 0, 0]} />
                                         <Bar dataKey="burned" name="Burned (Gym)" fill="#10b981" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -240,11 +241,13 @@ export default function AnalyticsPage() {
                                 <div className="h-[300px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={weightData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} fontSize={12} />
-                                            <YAxis domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tickMargin={10} fontSize={12} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.2)" />
+                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} fontSize={12} stroke="#888" />
+                                            <YAxis domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tickMargin={10} fontSize={12} stroke="#888" />
                                             <Tooltip
-                                                contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--background))' }}
+                                                contentStyle={{ borderRadius: '8px', border: '1px solid rgba(128,128,128,0.3)', backgroundColor: 'rgba(20,20,20,0.95)', color: '#fff' }}
+                                                itemStyle={{ color: '#e5e5e5' }}
+                                                labelStyle={{ color: '#a3a3a3' }}
                                             />
                                             <Line
                                                 type="monotone"
@@ -252,7 +255,7 @@ export default function AnalyticsPage() {
                                                 name="Weight (kg)"
                                                 stroke="#8b5cf6"
                                                 strokeWidth={4}
-                                                dot={{ r: 6, fill: "#8b5cf6", strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                                                dot={{ r: 6, fill: "#8b5cf6", strokeWidth: 2, stroke: '#1a1a1a' }}
                                                 activeDot={{ r: 8 }}
                                             />
                                         </LineChart>
