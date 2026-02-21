@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ActivityLevel, Gender } from '@/lib/calculations';
+import { FoodItem } from '@/lib/foodDatabase';
 
 export interface Profile {
     id: string;
@@ -21,42 +22,70 @@ export interface LoggedFood {
     quantity: number;
 }
 
+export interface LoggedActivity {
+    id: string; // unique instance id for removal
+    activityId: string; // corresponds to a predefined gym activity
+    name: string;
+    caloriesBurned: number;
+    duration?: number; // minutes
+    pace?: number;     // e.g., speed or mph
+    gradient?: number; // incline percentage
+    sets?: number;
+    reps?: number;
+    weight?: number;   // lbs or kg used
+}
+
 export interface DayLog {
     breakfast: number;
     lunch: number;
     snacks: number;
     dinner: number;
+    gym?: number;
     items?: {
         breakfast: LoggedFood[];
         lunch: LoggedFood[];
         snacks: LoggedFood[];
         dinner: LoggedFood[];
+        gym: LoggedActivity[];
     };
 }
 
 export interface AppState {
     profiles: Profile[];
     activeProfileId: string | null;
+    activeDateStr: string; // The selected date format YYYY-MM-DD
     logs: Record<string, Record<string, DayLog>>; // date (YYYY-MM-DD) -> profileId -> DayLog
+    customFoods: FoodItem[];
 
     // Actions
     addProfile: (profile: Omit<Profile, 'id'>) => void;
     updateProfile: (id: string, updates: Partial<Profile>) => void;
     deleteProfile: (id: string) => void;
     setActiveProfile: (id: string) => void;
-    updateLog: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items'>, calories: number) => void;
-    addFoodItem: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items'>, food: Omit<LoggedFood, 'id' | 'quantity'>) => void;
-    removeFoodItem: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items'>, itemId: string) => void;
+    setActiveDate: (dateStr: string) => void;
+    updateLog: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items' | 'gym'>, calories: number) => void;
+    addFoodItem: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items' | 'gym'>, food: Omit<LoggedFood, 'id' | 'quantity'>) => void;
+    removeFoodItem: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items' | 'gym'>, itemId: string) => void;
+    addGymActivity: (date: string, profileId: string, activity: Omit<LoggedActivity, 'id'>) => void;
+    removeGymActivity: (date: string, profileId: string, activityId: string) => void;
+    addCustomFood: (food: Omit<FoodItem, 'id'>) => void;
+    removeCustomFood: (foodId: string) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+const getTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export const useStore = create<AppState>()(
     persist(
         (set) => ({
             profiles: [],
             activeProfileId: null,
+            activeDateStr: getTodayStr(),
             logs: {},
+            customFoods: [],
 
             addProfile: (profileData) =>
                 set((state) => {
@@ -84,6 +113,11 @@ export const useStore = create<AppState>()(
                     activeProfileId: id,
                 })),
 
+            setActiveDate: (dateStr) =>
+                set(() => ({
+                    activeDateStr: dateStr,
+                })),
+
             updateLog: (date, profileId, slot, calories) =>
                 set((state) => {
                     const dateLogs = state.logs[date] || {};
@@ -92,7 +126,8 @@ export const useStore = create<AppState>()(
                         lunch: 0,
                         snacks: 0,
                         dinner: 0,
-                        items: { breakfast: [], lunch: [], snacks: [], dinner: [] }
+                        gym: 0,
+                        items: { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] }
                     };
 
                     return {
@@ -113,11 +148,11 @@ export const useStore = create<AppState>()(
                 set((state) => {
                     const dateLogs = state.logs[date] || {};
                     const currentProfileLog = dateLogs[profileId] || {
-                        breakfast: 0, lunch: 0, snacks: 0, dinner: 0,
+                        breakfast: 0, lunch: 0, snacks: 0, dinner: 0, gym: 0,
                     };
 
-                    const items = currentProfileLog.items || { breakfast: [], lunch: [], snacks: [], dinner: [] };
-                    const rawSlotItems = items[slot] || [];
+                    const items = currentProfileLog.items || { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] };
+                    const rawSlotItems = (items as any)[slot] || [];
 
                     // Recover and consolidate legacy corrupted items
                     const consolidatedMap = new Map<string, LoggedFood>();
@@ -174,15 +209,15 @@ export const useStore = create<AppState>()(
                     if (!currentProfileLog || !currentProfileLog.items) return state;
 
                     const items = currentProfileLog.items;
-                    const slotItems = items[slot] || [];
+                    const slotItems: LoggedFood[] = (items as any)[slot] || [];
 
                     // Identify all chunks of this food that match the ID, foodId, or name
-                    const itemsToRemove = slotItems.filter(i => i.id === itemId || i.foodId === itemId || i.name === itemId);
+                    const itemsToRemove = slotItems.filter((i) => i.id === itemId || i.foodId === itemId || i.name === itemId);
 
                     if (itemsToRemove.length === 0) return state;
 
                     // Ensure ALL instances of this loosely matched item are purged
-                    const newSlotItems = slotItems.filter(i => i.id !== itemId && i.foodId !== itemId && i.name !== itemId);
+                    const newSlotItems = slotItems.filter((i) => i.id !== itemId && i.foodId !== itemId && i.name !== itemId);
 
                     // Sum the calories of all removed chunks to ensure math stays perfectly accurate
                     const totalCaloriesRemoved = itemsToRemove.reduce((sum, item) => {
@@ -211,6 +246,84 @@ export const useStore = create<AppState>()(
                         }
                     };
                 }),
+
+            addGymActivity: (date, profileId, activity) =>
+                set((state) => {
+                    const dateLogs = state.logs[date] || {};
+                    const currentProfileLog = dateLogs[profileId] || {
+                        breakfast: 0, lunch: 0, snacks: 0, dinner: 0, gym: 0,
+                    };
+
+                    const items = currentProfileLog.items || { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] };
+                    const gymItems = items.gym || [];
+
+                    const newActivity: LoggedActivity = { ...activity, id: generateId() };
+                    const newGymItems = [...gymItems, newActivity];
+                    const currentGymCalories = currentProfileLog.gym || 0;
+
+                    return {
+                        logs: {
+                            ...state.logs,
+                            [date]: {
+                                ...dateLogs,
+                                [profileId]: {
+                                    ...currentProfileLog,
+                                    gym: currentGymCalories + activity.caloriesBurned,
+                                    items: {
+                                        ...items,
+                                        gym: newGymItems,
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }),
+
+            removeGymActivity: (date, profileId, activityId) =>
+                set((state) => {
+                    const dateLogs = state.logs[date] || {};
+                    const currentProfileLog = dateLogs[profileId];
+                    if (!currentProfileLog || !currentProfileLog.items || !currentProfileLog.items.gym) return state;
+
+                    const items = currentProfileLog.items;
+                    const gymItems = items.gym;
+
+                    const activityToRemove = gymItems.find(a => a.id === activityId);
+                    if (!activityToRemove) return state;
+
+                    const newGymItems = gymItems.filter(a => a.id !== activityId);
+                    let newGymTotal = (currentProfileLog.gym || 0) - activityToRemove.caloriesBurned;
+                    if (isNaN(newGymTotal) || newGymTotal < 0) newGymTotal = 0;
+
+                    return {
+                        logs: {
+                            ...state.logs,
+                            [date]: {
+                                ...dateLogs,
+                                [profileId]: {
+                                    ...currentProfileLog,
+                                    gym: newGymTotal,
+                                    items: {
+                                        ...items,
+                                        gym: newGymItems
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }),
+
+            addCustomFood: (foodData) =>
+                set((state) => {
+                    const id = 'custom_' + generateId();
+                    const newFood = { ...foodData, id } as import('@/lib/foodDatabase').FoodItem;
+                    return { customFoods: [...state.customFoods, newFood] };
+                }),
+
+            removeCustomFood: (foodId) =>
+                set((state) => ({
+                    customFoods: state.customFoods.filter((f) => f.id !== foodId),
+                })),
         }),
         {
             name: 'health-tracker-storage',

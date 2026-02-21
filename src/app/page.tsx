@@ -3,11 +3,12 @@
 import { ProfileSwitcher } from "@/components/ProfileSwitcher";
 import { DailyLogger } from "@/components/DailyLogger";
 import { ProgressVisualizer } from "@/components/ProgressVisualizer";
-import { TrendsChart } from "@/components/TrendsChart";
+import { DateNavigator } from "@/components/DateNavigator";
 import { AddProfileModal } from "@/components/AddProfileModal";
 import { useStore } from "@/store/useStore";
 import { useEffect, useState } from "react";
-import { Leaf } from "lucide-react";
+import Link from "next/link";
+import { Leaf, Flame } from "lucide-react";
 
 export default function Home() {
   const { profiles, activeProfileId } = useStore();
@@ -22,11 +23,11 @@ export default function Home() {
   if (!hydro) return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex flex-col items-center">
-      <div className="w-full max-w-5xl px-4 py-8 space-y-8">
+    <main className="min-h-screen bg-background text-foreground flex flex-col">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8 space-y-8">
 
         {/* Header */}
-        <header className="flex items-center justify-between">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-electric-green/20 p-2 rounded-xl">
               <Leaf className="w-8 h-8 text-electric-green" />
@@ -55,17 +56,10 @@ export default function Home() {
         ) : !activeProfileId ? (
           <div className="text-center py-20">Please select a profile.</div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column (Logger & Stats) */}
-            <div className="lg:col-span-2 space-y-8">
-              <ProgressVisualizer />
-              <DailyLogger />
-            </div>
-
-            {/* Right Column (Trends & Insights) */}
-            <div className="space-y-8">
-              <TrendsChart />
-            </div>
+          <div className="flex flex-col max-w-3xl mx-auto space-y-8 mt-4 w-full">
+            <DateNavigator />
+            <ProgressVisualizer />
+            <DailyLogger />
           </div>
         )}
       </div>

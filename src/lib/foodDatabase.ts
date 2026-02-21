@@ -95,3 +95,7 @@ export const FOOD_DATABASE: FoodItem[] = [
     { id: "dn_19", name: "Roti", servingSize: "1 Roti", calories: 70, category: "Dinner" },
     { id: "dn_20", name: "Rice", servingSize: "1 Cup", calories: 205, category: "Dinner" },
 ];
+
+export function getAllFoods(customFoods: FoodItem[]): FoodItem[] {
+    return [...FOOD_DATABASE, ...customFoods];
+}
