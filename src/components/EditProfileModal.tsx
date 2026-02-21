@@ -11,7 +11,7 @@ import { ActivityLevel, Gender } from "@/lib/calculations";
 
 export function EditProfileModal() {
     const [open, setOpen] = useState(false);
-    const { profiles, activeProfileId, updateProfile } = useStore();
+    const { profiles, activeProfileId, updateProfile, logWeight, activeDateStr } = useStore();
 
     const [name, setName] = useState("");
     const [gender, setGender] = useState<Gender>("male");
@@ -40,15 +40,22 @@ export function EditProfileModal() {
     const handleSave = () => {
         if (!activeProfileId || !name || !weight || !height || !age || !deficit) return;
 
+        const parsedWeight = parseFloat(weight);
+
         updateProfile(activeProfileId, {
             name,
             gender,
-            weight: parseFloat(weight),
+            weight: parsedWeight,
             height: parseFloat(height),
             age: parseInt(age, 10),
             activityLevel,
             deficitAmount: parseInt(deficit, 10),
         });
+
+        // Also log the weight into history for the active date
+        if (!isNaN(parsedWeight)) {
+            logWeight(activeDateStr, activeProfileId, parsedWeight);
+        }
 
         setOpen(false);
     };

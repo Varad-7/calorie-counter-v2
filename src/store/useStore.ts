@@ -22,6 +22,14 @@ export interface LoggedFood {
     quantity: number;
 }
 
+export interface Recipe {
+    id: string;
+    name: string;
+    description?: string;
+    ingredients: LoggedFood[];
+    totalCalories: number;
+}
+
 export interface LoggedActivity {
     id: string; // unique instance id for removal
     activityId: string; // corresponds to a predefined gym activity
@@ -56,6 +64,11 @@ export interface AppState {
     activeDateStr: string; // The selected date format YYYY-MM-DD
     logs: Record<string, Record<string, DayLog>>; // date (YYYY-MM-DD) -> profileId -> DayLog
     customFoods: FoodItem[];
+    recipes: Recipe[];
+
+    // New additions that stay entirely in localStorage
+    water: Record<string, Record<string, number>>; // date -> profileId -> glasses of water
+    weightHistory: Record<string, Record<string, number>>; // profileId -> date -> weight
 
     // Actions
     addProfile: (profile: Omit<Profile, 'id'>) => void;
@@ -70,6 +83,12 @@ export interface AppState {
     removeGymActivity: (date: string, profileId: string, activityId: string) => void;
     addCustomFood: (food: Omit<FoodItem, 'id'>) => void;
     removeCustomFood: (foodId: string) => void;
+    addRecipe: (recipe: Omit<Recipe, 'id'>) => void;
+    removeRecipe: (recipeId: string) => void;
+    addRecipeToLog: (date: string, profileId: string, slot: keyof Omit<DayLog, 'items' | 'gym'>, recipe: Recipe) => void;
+    addWater: (date: string, profileId: string, amount?: number) => void;
+    removeWater: (date: string, profileId: string, amount?: number) => void;
+    logWeight: (date: string, profileId: string, weight: number) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -86,14 +105,25 @@ export const useStore = create<AppState>()(
             activeDateStr: getTodayStr(),
             logs: {},
             customFoods: [],
+            recipes: [],
+            water: {},
+            weightHistory: {},
 
             addProfile: (profileData) =>
                 set((state) => {
                     const id = generateId();
                     const newProfile = { ...profileData, id };
+                    const currentWeights = state.weightHistory[id] || {};
                     return {
                         profiles: [...state.profiles, newProfile],
                         activeProfileId: state.activeProfileId || id, // set as active if it's the first
+                        weightHistory: {
+                            ...state.weightHistory,
+                            [id]: {
+                                ...currentWeights,
+                                [state.activeDateStr]: profileData.weight,
+                            }
+                        }
                     };
                 }),
 
@@ -324,6 +354,98 @@ export const useStore = create<AppState>()(
                 set((state) => ({
                     customFoods: state.customFoods.filter((f) => f.id !== foodId),
                 })),
+
+            addRecipe: (recipeData) =>
+                set((state) => {
+                    const id = 'recipe_' + generateId();
+                    const newRecipe = { ...recipeData, id };
+                    return { recipes: [...(state.recipes || []), newRecipe] };
+                }),
+
+            removeRecipe: (recipeId) =>
+                set((state) => ({
+                    recipes: (state.recipes || []).filter((r) => r.id !== recipeId),
+                })),
+
+            addRecipeToLog: (date, profileId, slot, recipe) =>
+                set((state) => {
+                    const dateLogs = state.logs[date] || {};
+                    const currentProfileLog = dateLogs[profileId] || {
+                        breakfast: 0, lunch: 0, snacks: 0, dinner: 0, gym: 0,
+                    };
+
+                    const items = currentProfileLog.items || { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] };
+                    const slotItems = (items as any)[slot] || [];
+
+                    // Create deeply copied ingredients with new IDs so they don't share IDs across logs
+                    const newItems = recipe.ingredients.map(ing => ({
+                        ...ing,
+                        id: generateId()
+                    }));
+
+                    return {
+                        logs: {
+                            ...state.logs,
+                            [date]: {
+                                ...dateLogs,
+                                [profileId]: {
+                                    ...currentProfileLog,
+                                    [slot]: currentProfileLog[slot] + recipe.totalCalories,
+                                    items: {
+                                        ...items,
+                                        [slot]: [...slotItems, ...newItems]
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }),
+
+            addWater: (date, profileId, amount = 1) =>
+                set((state) => {
+                    const dateWater = state.water[date] || {};
+                    const currentAmount = dateWater[profileId] || 0;
+                    return {
+                        water: {
+                            ...state.water,
+                            [date]: {
+                                ...dateWater,
+                                [profileId]: currentAmount + amount,
+                            }
+                        }
+                    };
+                }),
+
+            removeWater: (date, profileId, amount = 1) =>
+                set((state) => {
+                    const dateWater = state.water[date] || {};
+                    const currentAmount = dateWater[profileId] || 0;
+                    return {
+                        water: {
+                            ...state.water,
+                            [date]: {
+                                ...dateWater,
+                                [profileId]: Math.max(0, currentAmount - amount),
+                            }
+                        }
+                    };
+                }),
+
+            logWeight: (date, profileId, weight) =>
+                set((state) => {
+                    const profileWeights = state.weightHistory[profileId] || {};
+                    return {
+                        weightHistory: {
+                            ...state.weightHistory,
+                            [profileId]: {
+                                ...profileWeights,
+                                [date]: weight,
+                            }
+                        },
+                        // Also update the profile's current weight
+                        profiles: state.profiles.map((p) => (p.id === profileId ? { ...p, weight } : p))
+                    };
+                }),
         }),
         {
             name: 'health-tracker-storage',

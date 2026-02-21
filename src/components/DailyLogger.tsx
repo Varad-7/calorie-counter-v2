@@ -69,7 +69,7 @@ function SwipeableItem({
 }
 
 export function DailyLogger() {
-    const { activeProfileId, logs, customFoods, updateLog, addFoodItem, removeFoodItem, activeDateStr } = useStore();
+    const { activeProfileId, logs, customFoods, recipes, updateLog, addFoodItem, removeFoodItem, addRecipeToLog, activeDateStr } = useStore();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -137,7 +137,26 @@ export function DailyLogger() {
                                                 <CommandInput placeholder="Search food..." />
                                                 <CommandList>
                                                     <CommandEmpty>No food found.</CommandEmpty>
-                                                    <CommandGroup>
+                                                    <CommandGroup heading="Saved Meals">
+                                                        {(recipes || []).map(recipe => (
+                                                            <CommandItem key={recipe.id} onSelect={() => {
+                                                                addRecipeToLog(dateStr, activeProfileId, slot.key as SlotKey, recipe);
+                                                            }} className="flex flex-col items-start py-2">
+                                                                <div className="flex w-full justify-between items-center mb-1">
+                                                                    <span className="font-medium text-primary flex items-center gap-1.5">
+                                                                        <Utensils className="w-3.5 h-3.5" />
+                                                                        {recipe.name}
+                                                                    </span>
+                                                                    <span className="text-muted-foreground text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">{recipe.totalCalories} kcal</span>
+                                                                </div>
+                                                                <div className="flex w-full justify-between items-center">
+                                                                    <span className="text-xs text-muted-foreground">{recipe.ingredients.length} items</span>
+                                                                    <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Meal</span>
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                    <CommandGroup heading="Individual Foods">
                                                         {allFoods.filter(f => f.category.toLowerCase() === slot.key).map(food => (
                                                             <CommandItem key={food.id} onSelect={() => {
                                                                 addFoodItem(dateStr, activeProfileId, slot.key as SlotKey, { foodId: food.id, name: food.name, calories: food.calories });

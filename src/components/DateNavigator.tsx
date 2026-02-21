@@ -53,9 +53,9 @@ export function DateNavigator() {
                 <ChevronLeft className="w-4 h-4" />
             </Button>
 
-            <div className="flex items-center gap-2 font-medium bg-background px-4 py-1.5 rounded-lg border shadow-sm cursor-default">
+            <div className="flex items-center gap-2 font-medium bg-card px-4 py-1.5 rounded-lg border shadow-sm cursor-default">
                 <CalendarIcon className="w-4 h-4 text-electric-green" />
-                <span>{displayStr}</span>
+                <span className="text-foreground">{displayStr}</span>
             </div>
 
             <Button
