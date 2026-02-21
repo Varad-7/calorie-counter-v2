@@ -122,21 +122,33 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Safe area utilities for iPhone notch / Dynamic Island / home indicator */
-html {
+/* Safe area + iOS PWA layout: body is fixed height, only content scrolls */
+html,
+body {
   height: 100%;
-  overflow: auto;
+  height: 100dvh;
+  overflow: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
 body {
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
+}
+
+.app-scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .pt-safe {
@@ -147,7 +159,8 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Fixed bottom nav should account for safe area */
+/* Bottom nav sits at bottom of flex layout, never moves */
 .nav-bottom-safe {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);
+  flex-shrink: 0;
 }
