@@ -55,7 +55,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <ServiceWorkerRegistration />
-          <div className="app-scroll-container">
+          <div className="pb-20">
             {children}
           </div>
           <Navigation />
