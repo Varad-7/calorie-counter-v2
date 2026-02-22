@@ -4,6 +4,8 @@ import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { AuthProvider } from "@/components/AuthProvider";
+import { AuthGate } from "@/components/AuthGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Family Health Tracker",
   description: "Track caloric deficits and health goals for your family.",
-  manifest: "/calorie-counter-v2/manifest.json",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -46,20 +48,24 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/calorie-counter-v2/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased transition-colors duration-300`}
       >
-        <ThemeProvider>
-          <ServiceWorkerRegistration />
-          <div className="pb-20">
-            {children}
-          </div>
-          <Navigation />
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <ServiceWorkerRegistration />
+            <AuthGate>
+              <div className="pb-20">
+                {children}
+              </div>
+              <Navigation />
+            </AuthGate>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

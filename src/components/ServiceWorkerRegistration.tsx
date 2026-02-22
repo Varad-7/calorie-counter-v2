@@ -5,9 +5,8 @@ import { useEffect } from "react";
 export function ServiceWorkerRegistration() {
     useEffect(() => {
         if ("serviceWorker" in navigator) {
-            const basePath = "/calorie-counter-v2";
             navigator.serviceWorker
-                .register(`${basePath}/sw.js`, { scope: `${basePath}/` })
+                .register("/sw.js", { scope: "/" })
                 .then((registration) => {
                     console.log("SW registered:", registration.scope);
                 })

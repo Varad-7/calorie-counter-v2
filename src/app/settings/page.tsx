@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AddProfileModal } from "@/components/AddProfileModal";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { useTheme } from "@/components/ThemeProvider";
+import { useAuth } from "@/components/AuthProvider";
+import { LogOut, CloudUpload } from "lucide-react";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -254,9 +256,74 @@ export default function SettingsPage() {
                 </Card>
             </section>
 
+            <AccountSection />
+
             <AddProfileModal />
             <EditProfileModal />
         </main>
     );
 }
 
+function AccountSection() {
+    const { user, token, logout } = useAuth();
+    const [syncing, setSyncing] = useState(false);
+    const [syncMsg, setSyncMsg] = useState("");
+
+    const handleSync = async () => {
+        setSyncing(true);
+        setSyncMsg("");
+        try {
+            const stored = localStorage.getItem("health-tracker-storage");
+            const data = stored ? JSON.parse(stored) : {};
+            const state = data.state || {};
+
+            const res = await fetch("/api/sync", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    profiles: state.profiles || [],
+                    logs: state.logs || {},
+                    recipes: state.recipes || [],
+                    waterLogs: state.waterLogs || {},
+                    weightEntries: state.weightEntries || [],
+                }),
+            });
+
+            if (res.ok) {
+                setSyncMsg("✅ Data synced to cloud!");
+            } else {
+                const err = await res.json();
+                setSyncMsg(`❌ ${err.error}`);
+            }
+        } catch {
+            setSyncMsg("❌ Sync failed — check your connection");
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    return (
+        <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider px-1">Account</h2>
+            <Card>
+                <CardContent className="p-4 space-y-3">
+                    <p className="text-sm text-muted-foreground">Signed in as <span className="text-foreground font-medium">{user?.email}</span></p>
+                    <div className="flex gap-2">
+                        <Button onClick={handleSync} disabled={syncing} variant="outline" className="flex-1">
+                            <CloudUpload className="w-4 h-4 mr-2" />
+                            {syncing ? "Syncing..." : "Sync to Cloud"}
+                        </Button>
+                        <Button onClick={logout} variant="destructive" className="flex-1">
+                            <LogOut className="w-4 h-4 mr-2" />
+                            Sign Out
+                        </Button>
+                    </div>
+                    {syncMsg && <p className="text-xs text-center">{syncMsg}</p>}
+                </CardContent>
+            </Card>
+        </section>
+    );
+}

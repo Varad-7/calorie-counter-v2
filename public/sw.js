@@ -1,15 +1,14 @@
-const CACHE_NAME = 'health-tracker-v1';
-const BASE_PATH = '/calorie-counter-v2';
+const CACHE_NAME = 'health-tracker-v2';
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = [
-    `${BASE_PATH}/`,
-    `${BASE_PATH}/analytics`,
-    `${BASE_PATH}/recipes`,
-    `${BASE_PATH}/settings`,
-    `${BASE_PATH}/gym`,
-    `${BASE_PATH}/icon-192.png`,
-    `${BASE_PATH}/icon-512.png`,
+    '/',
+    '/analytics',
+    '/recipes',
+    '/settings',
+    '/gym',
+    '/icon-192.png',
+    '/icon-512.png',
 ];
 
 // Install: pre-cache core assets
@@ -34,12 +33,15 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch: network-first for navigations, cache-first for assets
+// Fetch: network-first for API & navigations, cache-first for assets
 self.addEventListener('fetch', (event) => {
     const { request } = event;
 
     // Skip non-GET requests
     if (request.method !== 'GET') return;
+
+    // Skip API routes — always go to network
+    if (request.url.includes('/api/')) return;
 
     // Navigation requests: network-first with cache fallback
     if (request.mode === 'navigate') {
@@ -50,7 +52,7 @@ self.addEventListener('fetch', (event) => {
                     caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                     return response;
                 })
-                .catch(() => caches.match(request).then((cached) => cached || caches.match(`${BASE_PATH}/`)))
+                .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
         );
         return;
     }
