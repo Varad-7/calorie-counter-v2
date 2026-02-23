@@ -6,6 +6,7 @@ import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { TrendingUp, Target, Scale, Flame, Activity } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BMIMeter } from "@/components/BMIMeter";
 
 function getLast7Days() {
     const dates = [];
@@ -142,6 +143,8 @@ export default function AnalyticsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <BMIMeter weight={profile.weight} height={profile.height} />
 
             <Tabs defaultValue="calories" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-4">
