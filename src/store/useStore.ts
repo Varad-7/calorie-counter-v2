@@ -182,7 +182,7 @@ export const useStore = create<AppState>()(
                     };
 
                     const items = currentProfileLog.items || { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] };
-                    const rawSlotItems = (items as any)[slot] || [];
+                    const rawSlotItems = (items as Record<string, unknown>)[slot] as LoggedFood[] || [];
 
                     // Recover and consolidate legacy corrupted items
                     const consolidatedMap = new Map<string, LoggedFood>();
@@ -239,7 +239,7 @@ export const useStore = create<AppState>()(
                     if (!currentProfileLog || !currentProfileLog.items) return state;
 
                     const items = currentProfileLog.items;
-                    const slotItems: LoggedFood[] = (items as any)[slot] || [];
+                    const slotItems = (items as Record<string, unknown>)[slot] as LoggedFood[] || [];
 
                     // Identify all chunks of this food that match the ID, foodId, or name
                     const itemsToRemove = slotItems.filter((i) => i.id === itemId || i.foodId === itemId || i.name === itemId);
@@ -375,7 +375,7 @@ export const useStore = create<AppState>()(
                     };
 
                     const items = currentProfileLog.items || { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] };
-                    const slotItems = (items as any)[slot] || [];
+                    const slotItems = (items as Record<string, unknown>)[slot] as LoggedFood[] || [];
 
                     // Create deeply copied ingredients with new IDs so they don't share IDs across logs
                     const newItems = recipe.ingredients.map(ing => ({
