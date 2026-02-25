@@ -85,72 +85,76 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Sync day logs (keyed by profileId + date)
+        // Sync day logs: client sends logs[date][profileId]
         if (logs && typeof logs === "object") {
-            for (const [profileId, dateLogs] of Object.entries(logs)) {
-                // Skip logs for profiles that don't exist in the DB
-                if (!syncedProfileIds.has(profileId)) continue;
-                if (typeof dateLogs !== "object" || !dateLogs) continue;
-                for (const [date, log] of Object.entries(dateLogs as Record<string, Record<string, unknown>>)) {
+            for (const [date, profileLogs] of Object.entries(logs)) {
+                if (typeof profileLogs !== "object" || !profileLogs) continue;
+                for (const [profileId, log] of Object.entries(profileLogs as Record<string, Record<string, unknown>>)) {
+                    // Skip logs for profiles that don't exist in the DB
+                    if (!syncedProfileIds.has(profileId)) continue;
                     if (!log) continue;
-                    const dayLog = await prisma.dayLog.upsert({
-                        where: { profileId_date: { profileId, date } },
-                        create: {
-                            profileId,
-                            date,
-                            breakfast: (log.breakfast as number) || 0,
-                            lunch: (log.lunch as number) || 0,
-                            snacks: (log.snacks as number) || 0,
-                            dinner: (log.dinner as number) || 0,
-                            gym: (log.gym as number) || 0,
-                        },
-                        update: {
-                            breakfast: (log.breakfast as number) || 0,
-                            lunch: (log.lunch as number) || 0,
-                            snacks: (log.snacks as number) || 0,
-                            dinner: (log.dinner as number) || 0,
-                            gym: (log.gym as number) || 0,
-                        },
-                    });
+                    try {
+                        const dayLog = await prisma.dayLog.upsert({
+                            where: { profileId_date: { profileId, date } },
+                            create: {
+                                profileId,
+                                date,
+                                breakfast: (log.breakfast as number) || 0,
+                                lunch: (log.lunch as number) || 0,
+                                snacks: (log.snacks as number) || 0,
+                                dinner: (log.dinner as number) || 0,
+                                gym: (log.gym as number) || 0,
+                            },
+                            update: {
+                                breakfast: (log.breakfast as number) || 0,
+                                lunch: (log.lunch as number) || 0,
+                                snacks: (log.snacks as number) || 0,
+                                dinner: (log.dinner as number) || 0,
+                                gym: (log.gym as number) || 0,
+                            },
+                        });
 
-                    // Sync foods
-                    const foods = log.foods as Array<{ slot?: string; foodId: string; name: string; calories: number; quantity: number }> | undefined;
-                    if (foods && Array.isArray(foods)) {
-                        await prisma.loggedFood.deleteMany({ where: { dayLogId: dayLog.id } });
-                        if (foods.length > 0) {
-                            await prisma.loggedFood.createMany({
-                                data: foods.map((f) => ({
-                                    dayLogId: dayLog.id,
-                                    slot: f.slot || "snacks",
-                                    foodId: f.foodId || f.name,
-                                    name: f.name,
-                                    calories: f.calories,
-                                    quantity: f.quantity || 1,
-                                })),
-                            });
+                        // Sync foods
+                        const foods = log.foods as Array<{ slot?: string; foodId: string; name: string; calories: number; quantity: number }> | undefined;
+                        if (foods && Array.isArray(foods)) {
+                            await prisma.loggedFood.deleteMany({ where: { dayLogId: dayLog.id } });
+                            if (foods.length > 0) {
+                                await prisma.loggedFood.createMany({
+                                    data: foods.map((f) => ({
+                                        dayLogId: dayLog.id,
+                                        slot: f.slot || "snacks",
+                                        foodId: f.foodId || f.name,
+                                        name: f.name,
+                                        calories: f.calories,
+                                        quantity: f.quantity || 1,
+                                    })),
+                                });
+                            }
                         }
-                    }
 
-                    // Sync activities
-                    const activities = log.activities as Array<{ activityId: string; name: string; caloriesBurned: number; duration?: number; pace?: number; gradient?: number; sets?: number; reps?: number; weight?: number }> | undefined;
-                    if (activities && Array.isArray(activities)) {
-                        await prisma.loggedActivity.deleteMany({ where: { dayLogId: dayLog.id } });
-                        if (activities.length > 0) {
-                            await prisma.loggedActivity.createMany({
-                                data: activities.map((a) => ({
-                                    dayLogId: dayLog.id,
-                                    activityId: a.activityId || a.name,
-                                    name: a.name,
-                                    caloriesBurned: a.caloriesBurned,
-                                    duration: a.duration,
-                                    pace: a.pace,
-                                    gradient: a.gradient,
-                                    sets: a.sets,
-                                    reps: a.reps,
-                                    weight: a.weight,
-                                })),
-                            });
+                        // Sync activities
+                        const activities = log.activities as Array<{ activityId: string; name: string; caloriesBurned: number; duration?: number; pace?: number; gradient?: number; sets?: number; reps?: number; weight?: number }> | undefined;
+                        if (activities && Array.isArray(activities)) {
+                            await prisma.loggedActivity.deleteMany({ where: { dayLogId: dayLog.id } });
+                            if (activities.length > 0) {
+                                await prisma.loggedActivity.createMany({
+                                    data: activities.map((a) => ({
+                                        dayLogId: dayLog.id,
+                                        activityId: a.activityId || a.name,
+                                        name: a.name,
+                                        caloriesBurned: a.caloriesBurned,
+                                        duration: a.duration,
+                                        pace: a.pace,
+                                        gradient: a.gradient,
+                                        sets: a.sets,
+                                        reps: a.reps,
+                                        weight: a.weight,
+                                    })),
+                                });
+                            }
                         }
+                    } catch (dayLogErr) {
+                        console.warn(`Skipping day log ${profileId}/${date}:`, dayLogErr);
                     }
                 }
             }
