@@ -9,7 +9,10 @@ import { AddProfileModal } from "@/components/AddProfileModal";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/components/AuthProvider";
-import { LogOut, CloudUpload, CloudDownload } from "lucide-react";
+import { LogOut, CloudUpload, CloudDownload, ShieldAlert } from "lucide-react";
+import Link from "next/link";
+
+const ADMIN_EMAIL = "varadpatil5424@gmail.com";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -300,6 +303,14 @@ function AccountSection() {
                         <LogOut className="w-4 h-4 mr-2" />
                         Sign Out
                     </Button>
+                    {user?.email === ADMIN_EMAIL && (
+                        <Link href="/admin" className="block">
+                            <Button variant="outline" className="w-full border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:text-violet-300">
+                                <ShieldAlert className="w-4 h-4 mr-2" />
+                                Admin Dashboard
+                            </Button>
+                        </Link>
+                    )}
                     {syncMsg && <p className="text-xs text-center mt-1">{syncMsg}</p>}
                 </CardContent>
             </Card>
