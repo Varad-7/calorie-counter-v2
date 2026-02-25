@@ -34,6 +34,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState(false);
 
+    // Build the sync payload from the current Zustand store state
+    const buildSyncPayload = useCallback(() => {
+        const state = useStore.getState();
+
+        // Transform water: Record<date, Record<profileId, glasses>> -> Record<"profileId_date", glasses>
+        const waterLogs: Record<string, number> = {};
+        for (const [date, profileWater] of Object.entries(state.water || {})) {
+            for (const [profileId, glasses] of Object.entries(profileWater)) {
+                waterLogs[`${profileId}_${date}`] = glasses;
+            }
+        }
+
+        // Transform weight history to array
+        const weightEntries: { profileId: string; date: string; weight: number }[] = [];
+        for (const [profileId, dates] of Object.entries(state.weightHistory || {})) {
+            for (const [date, weight] of Object.entries(dates)) {
+                weightEntries.push({ profileId, date, weight });
+            }
+        }
+
+        // Transform logs: flatten nested items.{slot} into foods[] and items.gym into activities[]
+        // The server POST /api/sync expects { foods: [...], activities: [...] } per log entry
+        const serializedLogs: Record<string, Record<string, unknown>> = {};
+        for (const [date, profileLogs] of Object.entries(state.logs || {})) {
+            serializedLogs[date] = {};
+            for (const [profileId, log] of Object.entries(profileLogs)) {
+                const items = log.items || { breakfast: [], lunch: [], snacks: [], dinner: [], gym: [] };
+                const foods: { slot: string; foodId: string; name: string; calories: number; quantity: number }[] = [];
+                for (const slot of ["breakfast", "lunch", "snacks", "dinner"] as const) {
+                    const slotItems = (items as Record<string, unknown>)[slot] as { foodId?: string; name: string; calories: number; quantity?: number }[] || [];
+                    for (const item of slotItems) {
+                        foods.push({ slot, foodId: item.foodId || item.name, name: item.name, calories: item.calories, quantity: item.quantity || 1 });
+                    }
+                }
+                const activities = (items.gym || []).map((a: { activityId?: string; name: string; caloriesBurned: number; duration?: number; pace?: number; gradient?: number; sets?: number; reps?: number; weight?: number }) => ({
+                    activityId: a.activityId || a.name,
+                    name: a.name,
+                    caloriesBurned: a.caloriesBurned,
+                    duration: a.duration,
+                    pace: a.pace,
+                    gradient: a.gradient,
+                    sets: a.sets,
+                    reps: a.reps,
+                    weight: a.weight,
+                }));
+                serializedLogs[date][profileId] = {
+                    breakfast: log.breakfast,
+                    lunch: log.lunch,
+                    snacks: log.snacks,
+                    dinner: log.dinner,
+                    gym: log.gym,
+                    foods,
+                    activities,
+                };
+            }
+        }
+
+        return { profiles: state.profiles, logs: serializedLogs, recipes: state.recipes || [], waterLogs, weightEntries };
+    }, []);
+
+    // Push current local state up to the cloud
+    const pushToCloud = useCallback(async (authToken: string) => {
+        try {
+            const payload = buildSyncPayload();
+            await fetch("/api/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+                body: JSON.stringify(payload),
+            });
+        } catch (err) {
+            console.error("Failed to push to cloud:", err);
+        }
+    }, [buildSyncPayload]);
+
     // Pull data from cloud and hydrate localStorage/Zustand
     const pullFromCloud = useCallback(async (authToken: string) => {
         try {
@@ -113,7 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 })
                 .then(async (data) => {
                     setUser({ userId: data.id, email: data.email });
-                    // Auto-pull from cloud on app load
+                    // First push local data up, then pull server data down (full two-way sync)
+                    await pushToCloud(stored);
                     await pullFromCloud(stored);
                 })
                 .catch(() => {
@@ -124,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
             setIsLoading(false);
         }
-    }, [pullFromCloud]);
+    }, [pullFromCloud, pushToCloud]);
 
     const login = async (email: string, password: string) => {
         const res = await fetch("/api/auth/login", {
@@ -137,7 +212,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("auth_token", data.token);
         setToken(data.token);
         setUser({ userId: data.userId, email: data.email });
-        // Auto-pull data after login
+        // Full two-way sync on login: push local data first, then pull server data
+        await pushToCloud(data.token);
         await pullFromCloud(data.token);
     };
 
@@ -164,38 +240,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!token) return "❌ Not logged in";
         setIsSyncing(true);
         try {
-            const state = useStore.getState();
-
-            // Transform water from Record<date, Record<profileId, glasses>>
-            // to Record<"profileId_date", glasses> for the API
-            const waterLogs: Record<string, number> = {};
-            for (const [date, profileWater] of Object.entries(state.water || {})) {
-                for (const [profileId, glasses] of Object.entries(profileWater)) {
-                    waterLogs[`${profileId}_${date}`] = glasses;
-                }
-            }
-
-            // Transform weight history to array
-            const weightEntries: { profileId: string; date: string; weight: number }[] = [];
-            for (const [profileId, dates] of Object.entries(state.weightHistory || {})) {
-                for (const [date, weight] of Object.entries(dates)) {
-                    weightEntries.push({ profileId, date, weight });
-                }
-            }
-
+            const payload = buildSyncPayload();
             const res = await fetch("/api/sync", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    profiles: state.profiles,
-                    logs: state.logs,
-                    recipes: state.recipes,
-                    waterLogs,
-                    weightEntries,
-                }),
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
             });
 
             if (res.ok) return "✅ Data synced to cloud!";

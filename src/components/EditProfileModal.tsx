@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useStore } from "@/store/useStore";
+import { useAuth } from "@/components/AuthProvider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { ActivityLevel, Gender } from "@/lib/calculations";
 export function EditProfileModal() {
     const [open, setOpen] = useState(false);
     const { profiles, activeProfileId, updateProfile, logWeight, activeDateStr } = useStore();
+    const { token } = useAuth();
 
     const [name, setName] = useState("");
     const [gender, setGender] = useState<Gender>("male");
@@ -37,12 +39,11 @@ export function EditProfileModal() {
         }
     }, [open, activeProfileId, profiles]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!activeProfileId || !name || !weight || !height || !age || !deficit) return;
 
         const parsedWeight = parseFloat(weight);
-
-        updateProfile(activeProfileId, {
+        const updates = {
             name,
             gender,
             weight: parsedWeight,
@@ -50,7 +51,26 @@ export function EditProfileModal() {
             age: parseInt(age, 10),
             activityLevel,
             deficitAmount: parseInt(deficit, 10),
-        });
+        };
+
+        // Update local Zustand store immediately for a snappy UI
+        updateProfile(activeProfileId, updates);
+
+        // Persist to the database so changes survive a reload
+        if (token) {
+            try {
+                await fetch(`/api/profiles/${activeProfileId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(updates),
+                });
+            } catch (err) {
+                console.error("Failed to persist profile update:", err);
+            }
+        }
 
         // Also log the weight into history for the active date
         if (!isNaN(parsedWeight)) {

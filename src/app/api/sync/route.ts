@@ -13,34 +13,48 @@ export async function POST(req: NextRequest) {
         const data = await req.json();
         const { profiles, logs, recipes, waterLogs, weightEntries } = data;
 
-        // Sync profiles
+        // Sync profiles — track which profileIds are successfully persisted
+        const syncedProfileIds = new Set<string>();
         if (profiles && Array.isArray(profiles)) {
             for (const p of profiles) {
-                await prisma.profile.upsert({
-                    where: { id: p.id },
-                    create: {
-                        id: p.id,
-                        userId: user.userId,
-                        name: p.name,
-                        gender: p.gender,
-                        weight: p.weight,
-                        height: p.height,
-                        age: p.age,
-                        activityLevel: p.activityLevel,
-                        deficitAmount: p.deficitAmount,
-                    },
-                    update: {
-                        name: p.name,
-                        gender: p.gender,
-                        weight: p.weight,
-                        height: p.height,
-                        age: p.age,
-                        activityLevel: p.activityLevel,
-                        deficitAmount: p.deficitAmount,
-                    },
-                });
+                try {
+                    await prisma.profile.upsert({
+                        where: { id: p.id },
+                        create: {
+                            id: p.id,
+                            userId: user.userId,
+                            name: p.name,
+                            gender: p.gender,
+                            weight: p.weight,
+                            height: p.height,
+                            age: p.age,
+                            activityLevel: p.activityLevel,
+                            deficitAmount: p.deficitAmount,
+                        },
+                        update: {
+                            name: p.name,
+                            gender: p.gender,
+                            weight: p.weight,
+                            height: p.height,
+                            age: p.age,
+                            activityLevel: p.activityLevel,
+                            deficitAmount: p.deficitAmount,
+                        },
+                    });
+                    syncedProfileIds.add(p.id);
+                } catch (profileErr) {
+                    console.warn(`Skipping profile ${p.id}:`, profileErr);
+                }
             }
         }
+
+        // Also include any profiles already in the DB for this user
+        // (so logs from previous syncs don't get skipped)
+        const existingProfiles = await prisma.profile.findMany({
+            where: { userId: user.userId },
+            select: { id: true },
+        });
+        for (const ep of existingProfiles) syncedProfileIds.add(ep.id);
 
         // Sync recipes
         if (recipes && Array.isArray(recipes)) {
@@ -74,6 +88,8 @@ export async function POST(req: NextRequest) {
         // Sync day logs (keyed by profileId + date)
         if (logs && typeof logs === "object") {
             for (const [profileId, dateLogs] of Object.entries(logs)) {
+                // Skip logs for profiles that don't exist in the DB
+                if (!syncedProfileIds.has(profileId)) continue;
                 if (typeof dateLogs !== "object" || !dateLogs) continue;
                 for (const [date, log] of Object.entries(dateLogs as Record<string, Record<string, unknown>>)) {
                     if (!log) continue;
@@ -143,20 +159,25 @@ export async function POST(req: NextRequest) {
         // Sync water logs
         if (waterLogs && typeof waterLogs === "object") {
             for (const [key, glasses] of Object.entries(waterLogs)) {
-                const [profileId, date] = key.split("_");
-                if (profileId && date) {
-                    await prisma.waterLog.upsert({
-                        where: { profileId_date: { profileId, date } },
-                        create: { profileId, date, glasses: glasses as number },
-                        update: { glasses: glasses as number },
-                    });
-                }
+                // Water key format: "profileId_YYYY-MM-DD"
+                // profileId itself never contains underscore, date always does, so split on first "_"
+                const underscoreIdx = key.indexOf("_");
+                if (underscoreIdx < 0) continue;
+                const profileId = key.substring(0, underscoreIdx);
+                const date = key.substring(underscoreIdx + 1);
+                if (!profileId || !date || !syncedProfileIds.has(profileId)) continue;
+                await prisma.waterLog.upsert({
+                    where: { profileId_date: { profileId, date } },
+                    create: { profileId, date, glasses: glasses as number },
+                    update: { glasses: glasses as number },
+                });
             }
         }
 
         // Sync weight entries
         if (weightEntries && Array.isArray(weightEntries)) {
             for (const entry of weightEntries) {
+                if (!syncedProfileIds.has(entry.profileId)) continue;
                 await prisma.weightEntry.upsert({
                     where: { profileId_date: { profileId: entry.profileId, date: entry.date } },
                     create: {
