@@ -159,9 +159,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const mergedRecipes = Array.from(recipeMap.values());
 
                 // Apply to store
+                // IMPORTANT: validate activeProfileId — if the current one doesn't exist in
+                // the merged profiles (e.g. it's a stale local-only ID), switch to the first
+                // server profile so the dashboard actually shows data.
+                const mergedProfileIds = new Set(mergedProfiles.map((p: { id: string }) => p.id));
+                const validActiveId =
+                    currentState.activeProfileId && mergedProfileIds.has(currentState.activeProfileId)
+                        ? currentState.activeProfileId
+                        : mergedProfiles[0]?.id || null;
+
                 useStore.setState({
                     profiles: mergedProfiles,
-                    activeProfileId: currentState.activeProfileId || mergedProfiles[0]?.id || null,
+                    activeProfileId: validActiveId,
                     logs: mergedLogs,
                     recipes: mergedRecipes,
                     water: mergedWater,
